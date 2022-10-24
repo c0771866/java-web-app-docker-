@@ -1,0 +1,40 @@
+node{
+    def mavenHome = tool name: 'Maven'
+    stage("1SCMClone"){
+       git changelog: false, poll: false, url: 'https://github.com/c0771866/java-web-app-docker.git' 
+    }
+    
+    stage("2MavenBuild"){
+      sh "${mavenHome}/bin/mvn clean package"
+    }
+    /*
+    stage("3CodeQuality"){
+      sh "${mavenHome}/bin/mvn sonar:sonar"
+    }
+    
+    stage("4UploadArtifact"){
+      sh "${mavenHome}/bin/mvn deploy"
+    }
+    */
+    stage("5BuildDockerImage"){
+     sh "docker build -t donrabii/docker-java-app:1 ."
+    }
+    
+     stage("6PushImageToDockerHub"){
+         withCredentials([string(credentialsId: 'DockerHub_ID', variable: 'Password')]) {
+    // some block
+     sh "docker login -u donrabii -p ${Password}"
+    sh "docker push donrabii/docker-java-app:1"
+             
+ }
+}
+
+ stage("6Deploy&RunContainerInAnotherServer"){
+     sshagent(['Docker_Deployment_Server']) {
+
+         sh "ssh -o StrictHostKeyChecking=no ubuntu@15.223.69.134 rm -f javawebappcontainer || true"
+         sh "ssh -o StrictHostKeyChecking=no ubuntu@15.223.69.134 docker run -d -p 5889:8080 --name javawebappcontainer donrabii/docker-java-app:1"
+}
+}
+    }   
+    
